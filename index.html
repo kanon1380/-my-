@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カラオケ myキーメモ</title>
+  <style>
+    :root {
+      --primary: #ff4757;
+      --bg: #f1f2f6;
+      --card-bg: #ffffff;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      margin: 0;
+      padding: 20px;
+      color: #2f3542;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    /* フォーム周り */
+    .form-card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      margin-bottom: 25px;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dfe4ea;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    /* キーコントローラー */
+    .key-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin: 15px 0;
+    }
+    .btn-key {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      border: none;
+      background: #e4e7eb;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-key:active {
+      transform: scale(0.95);
+      background: #ced6e0;
+    }
+    .key-display {
+      font-size: 28px;
+      font-weight: bold;
+      width: 80px;
+      text-align: center;
+    }
+    .btn-save {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    /* 曲リスト */
+    .song-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .song-card {
+      background: var(--card-bg);
+      padding: 15px 20px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .song-info {
+      flex-grow: 1;
+    }
+    .song-title {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .artist-name {
+      font-size: 13px;
+      color: #747d8c;
+      margin-top: 2px;
+    }
+    .song-memo {
+      font-size: 12px;
+      color: #ff6b81;
+      margin-top: 4px;
+    }
+    .key-badge {
+      font-size: 20px;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: #f1f2f6;
+      min-width: 50px;
+      text-align: center;
+      margin-left: 10px;
+    }
+    .key-plus { color: #ff4757; background: #ffe0e3; }
+    .key-minus { color: #1e90ff; background: #e1f0ff; }
+    .key-zero { color: #2ed573; background: #e3fceb; }
+    
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #a4b0be;
+      cursor: pointer;
+      font-size: 18px;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🎤 カラオケ myキーメモ</h1>
+
+    <!-- 登録フォーム -->
+    <div class="form-card">
+      <div class="input-group">
+        <label>曲名</label>
+        <input type="text" id="songTitle" placeholder="例: 怪獣の花唄">
+      </div>
+      <div class="input-group">
+        <label>歌手名（任意）</label>
+        <input type="text" id="artistName" placeholder="例: Vaundy">
+      </div>
+      <div class="input-group">
+        <label>メモ（任意）</label>
+        <input type="text" id="memo" placeholder="例: サビ裏声キツい・ラスト原キー上げる">
+      </div>
+
+      <!-- キー設定ボタン -->
+      <label style="text-align: center;">myキー設定</label>
+      <div class="key-selector">
+        <button class="btn-key" onclick="changeKey(-1)">-</button>
+        <div class="key-display" id="currentKey">原曲</div>
+        <button class="btn-key" onclick="changeKey(1)">+</button>
+      </div>
+
+      <button class="btn-save" onclick="saveSong()">マイキーを保存する</button>
+    </div>
+
+    <!-- 保存済み曲一覧 -->
+    <div class="song-list" id="songList"></div>
+  </div>
+
+  <script>
+    let selectedKey = 0; // 0 = 原曲, +1, -2 など
+    let songData = JSON.parse(localStorage.getItem("karaokeKeys")) || [];
+
+    // 画面読み込み時に表示
+    renderList();
+
+    // キー変更機能（+1 / -1）
+    function changeKey(delta) {
+      selectedKey += delta;
+      
+      // キー表示の更新
+      const keyDisplay = document.getElementById("currentKey");
+      if (selectedKey > 0) {
+        keyDisplay.textContent = `+${selectedKey}`;
+        keyDisplay.style.color = "#ff4757";
+      } else if (selectedKey < 0) {
+        keyDisplay.textContent = `${selectedKey}`;
+        keyDisplay.style.color = "#1e90ff";
+      } else {
+        keyDisplay.textContent = "原曲";
+        keyDisplay.style.color = "#2ed573";
+      }
+    }
+
+    // 保存機能
+    function saveSong() {
+      const title = document.getElementById("songTitle").value.trim();
+      const artist = document.getElementById("artistName").value.trim();
+      const memo = document.getElementById("memo").value.trim();
+
+      if (!title) {
+        alert("曲名を入力してください！");
+        return;
+      }
+
+      // 新しい曲オブジェクト
+      const newSong = {
+        id: Date.now(),
+        title: title,
+        artist: artist,
+        memo: memo,
+        key: selectedKey
+      };
+
+      // 配列の先頭に追加して保存
+      songData.unshift(newSong);
+      localStorage.setItem("karaokeKeys", JSON.stringify(songData));
+
+      // フォームの初期化
+      document.getElementById("songTitle").value = "";
+      document.getElementById("artistName").value = "";
+      document.getElementById("memo").value = "";
+      selectedKey = 0;
+      changeKey(0);
+
+      // リスト再描画
+      renderList();
+    }
+
+    // 削除機能
+    function deleteSong(id) {
+      if (confirm("この曲のメモを削除しますか？")) {
+        songData = songData.filter(song => song.id !== id);
+        localStorage.setItem("karaokeKeys", JSON.stringify(songData));
+        renderList();
+      }
+    }
+
+    // 一覧描画機能
+    function renderList() {
+      const listContainer = document.getElementById("songList");
+      listContainer.innerHTML = "";
+
+      songData.forEach(song => {
+        let keyText = song.key > 0 ? `+${song.key}` : (song.key === 0 ? "原曲" : `${song.key}`);
+        let badgeClass = song.key > 0 ? "key-plus" : (song.key === 0 ? "key-zero" : "key-minus");
+
+        const card = document.createElement("div");
+        card.className = "song-card";
+        card.innerHTML = `
+          <div class="song-info">
+            <div class="song-title">${song.title}</div>
+            ${song.artist ? `<div class="artist-name">${song.artist}</div>` : ""}
+            ${song.memo ? `<div class="song-memo">📝 ${song.memo}</div>` : ""}
+          </div>
+          <div class="key-badge ${badgeClass}">${keyText}</div>
+          <button class="btn-delete" onclick="deleteSong(${song.id})">✕</button>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
