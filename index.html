@@ -146,22 +146,6 @@
       font-size: 18px;
       margin-left: 10px;
     }
-    /* ドラッグ＆ドロップ用のスタイル */
-    .song-card {
-      cursor: grab;
-      user-select: none;
-      transition: background-color 0.2s;
-    }
-    .song-card.dragging {
-      opacity: 0.5;
-      background: #e2e8f0;
-    }
-    .drag-handle {
-      color: #a0aec0;
-      margin-right: 10px;
-      font-size: 18px;
-      cursor: grab;
-    }
   </style>
 </head>
 <body>
@@ -268,119 +252,28 @@
       }
     }
 
-    // 一覧描画機能（ドラッグ＆ドロップ対応版）
+    // 一覧描画機能
     function renderList() {
       const listContainer = document.getElementById("songList");
       listContainer.innerHTML = "";
 
-      songData.forEach((song, index) => {
+      songData.forEach(song => {
         let keyText = song.key > 0 ? `+${song.key}` : (song.key === 0 ? "原曲" : `${song.key}`);
         let badgeClass = song.key > 0 ? "key-plus" : (song.key === 0 ? "key-zero" : "key-minus");
 
         const card = document.createElement("div");
         card.className = "song-card";
-        card.draggable = true;
-        card.dataset.index = index; // 現在の順番を記録
-
         card.innerHTML = `
-          <div style="display:flex; align-items:center; flex-grow:1;">
-            <span class="drag-handle">☰</span>
-            <div>
-              <div class="song-title">${song.title}</div>
-              ${song.artist ? `<div class="artist-name">${song.artist}</div>` : ""}
-              ${song.memo ? `<div class="song-memo">📝 ${song.memo}</div>` : ""}
-            </div>
+          <div class="song-info">
+            <div class="song-title">${song.title}</div>
+            ${song.artist ? `<div class="artist-name">${song.artist}</div>` : ""}
+            ${song.memo ? `<div class="song-memo">📝 ${song.memo}</div>` : ""}
           </div>
-          <div style="display:flex; align-items:center;">
-            <div class="key-badge ${badgeClass}">${keyText}</div>
-            <button class="btn-delete" onclick="deleteSong(${song.id})">✕</button>
-          </div>
+          <div class="key-badge ${badgeClass}">${keyText}</div>
+          <button class="btn-delete" onclick="deleteSong(${song.id})">✕</button>
         `;
-
-        // ドラッグイベントの登録
-        card.addEventListener("dragstart", handleDragStart);
-        card.addEventListener("dragover", handleDragOver);
-        card.addEventListener("drop", handleDrop);
-        card.addEventListener("dragend", handleDragEnd);
-
         listContainer.appendChild(card);
       });
-    }
-    // ドラッグ＆タッチ対応の並べ替え処理
-    let dragSrcIndex = null;
-
-    // --- PC向け（マウス操作） ---
-    function handleDragStart(e) {
-      dragSrcIndex = Number(this.dataset.index);
-      this.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    }
-
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-    }
-
-    function handleDrop(e) {
-      e.stopPropagation();
-      const targetIndex = Number(this.dataset.index);
-      if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-        moveItem(dragSrcIndex, targetIndex);
-      }
-    }
-
-    function handleDragEnd() {
-      this.classList.remove("dragging");
-    }
-
-    // --- スマホ向け（タッチ操作） ---
-    let touchY = 0;
-
-    // タッチイベントの自動登録（renderList実行時に呼び出される）
-    function setupTouchEvents() {
-      const cards = document.querySelectorAll(".song-card");
-      cards.forEach(card => {
-        card.addEventListener("touchstart", handleTouchStart, { passive: false });
-        card.addEventListener("touchmove", handleTouchMove, { passive: false });
-        card.addEventListener("touchend", handleTouchEnd);
-      });
-    }
-
-    function handleTouchStart(e) {
-      dragSrcIndex = Number(this.dataset.index);
-      this.classList.add("dragging");
-    }
-
-    function handleTouchMove(e) {
-      // 指で移動中は画面全体の上下スクロールを防止
-      e.preventDefault();
-      const touch = e.touches[0];
-      const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!targetElement) return;
-
-      const targetCard = targetElement.closest(".song-card");
-      if (targetCard && targetCard.dataset.index !== undefined) {
-        const targetIndex = Number(targetCard.dataset.index);
-        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-          moveItem(dragSrcIndex, targetIndex);
-          dragSrcIndex = targetIndex; // 連続で滑らかに入れ替える
-        }
-      }
-    }
-
-    function handleTouchEnd(e) {
-      this.classList.remove("dragging");
-      dragSrcIndex = null;
-    }
-
-    // 並べ替え共通処理
-    function moveItem(fromIndex, toIndex) {
-      const movedItem = songData.splice(fromIndex, 1)[0];
-      songData.splice(toIndex, 0, movedItem);
-      localStorage.setItem("karaokeKeys", JSON.stringify(songData));
-      renderList();
-      // renderList() の末尾に追記
-      setupTouchEvents();
     }
   </script>
 </body>
