@@ -306,9 +306,10 @@
         listContainer.appendChild(card);
       });
     }
-    // ドラッグ＆ドロップ制御用変数
+    // ドラッグ＆タッチ対応の並べ替え処理
     let dragSrcIndex = null;
 
+    // --- PC向け（マウス操作） ---
     function handleDragStart(e) {
       dragSrcIndex = Number(this.dataset.index);
       this.classList.add("dragging");
@@ -316,27 +317,70 @@
     }
 
     function handleDragOver(e) {
-      e.preventDefault(); // ドロップを許可するために必須
+      e.preventDefault();
       e.dataTransfer.dropEffect = "move";
     }
 
     function handleDrop(e) {
       e.stopPropagation();
       const targetIndex = Number(this.dataset.index);
-
       if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-        // 配列要素の順番を入れ替える
-        const movedItem = songData.splice(dragSrcIndex, 1)[0];
-        songData.splice(targetIndex, 0, movedItem);
-
-        // 並べ替えた状態をlocalStorageに永続保存
-        localStorage.setItem("karaokeKeys", JSON.stringify(songData));
-        renderList();
+        moveItem(dragSrcIndex, targetIndex);
       }
     }
 
     function handleDragEnd() {
       this.classList.remove("dragging");
+    }
+
+    // --- スマホ向け（タッチ操作） ---
+    let touchY = 0;
+
+    // タッチイベントの自動登録（renderList実行時に呼び出される）
+    function setupTouchEvents() {
+      const cards = document.querySelectorAll(".song-card");
+      cards.forEach(card => {
+        card.addEventListener("touchstart", handleTouchStart, { passive: false });
+        card.addEventListener("touchmove", handleTouchMove, { passive: false });
+        card.addEventListener("touchend", handleTouchEnd);
+      });
+    }
+
+    function handleTouchStart(e) {
+      dragSrcIndex = Number(this.dataset.index);
+      this.classList.add("dragging");
+    }
+
+    function handleTouchMove(e) {
+      // 指で移動中は画面全体の上下スクロールを防止
+      e.preventDefault();
+      const touch = e.touches[0];
+      const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!targetElement) return;
+
+      const targetCard = targetElement.closest(".song-card");
+      if (targetCard && targetCard.dataset.index !== undefined) {
+        const targetIndex = Number(targetCard.dataset.index);
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+          moveItem(dragSrcIndex, targetIndex);
+          dragSrcIndex = targetIndex; // 連続で滑らかに入れ替える
+        }
+      }
+    }
+
+    function handleTouchEnd(e) {
+      this.classList.remove("dragging");
+      dragSrcIndex = null;
+    }
+
+    // 並べ替え共通処理
+    function moveItem(fromIndex, toIndex) {
+      const movedItem = songData.splice(fromIndex, 1)[0];
+      songData.splice(toIndex, 0, movedItem);
+      localStorage.setItem("karaokeKeys", JSON.stringify(songData));
+      renderList();
+      // renderList() の末尾に追記
+      setupTouchEvents();
     }
   </script>
 </body>
